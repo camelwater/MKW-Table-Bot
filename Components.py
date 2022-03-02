@@ -150,9 +150,6 @@ class ConfirmView(discord.ui.View):
         if self.responded: 
             return False
 
-        if self.responded:
-            return False
-
         return allowed
     
     async def on_error(self, error: Exception, item: discord.ui.Item, interaction: discord.Interaction) -> None:
