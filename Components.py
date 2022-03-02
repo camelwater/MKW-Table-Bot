@@ -6,6 +6,7 @@ import UtilityFunctions
 import asyncio
 import TimerDebuggers
 import common
+import Stats
 
 class ManualTeamsModal(discord.ui.Modal):
     def __init__(self, bot, prefix, is_lounge, view):
@@ -149,6 +150,9 @@ class ConfirmView(discord.ui.View):
         if self.responded: 
             return False
 
+        if self.responded:
+            return False
+
         return allowed
     
     async def on_error(self, error: Exception, item: discord.ui.Item, interaction: discord.Interaction) -> None:
@@ -188,6 +192,7 @@ class PictureButton(discord.ui.Button['PictureView']):
 
         self.responded = True
         msg = InteractionUtils.create_proxy_msg(interaction, ['wp'])
+        Stats.log_command('wp')
 
         await common.safe_edit(interaction.message, view=None)
         await commands.TablingCommands.war_picture_command(msg,self.view.bot,['wp'],self.view.prefix,self.view.is_lounge,
@@ -206,6 +211,7 @@ class SubmitButton(discord.ui.Button['PictureView']):
     @TimerDebuggers.timer_coroutine
     async def callback(self, interaction: discord.Interaction):
         if self.channel_bot.has_been_lounge_submitted:
+            await self.view.on_timeout()
             return await interaction.response.send_message("Table has already been submitted.", ephemeral=True)
         
         if self.in_use:
@@ -214,7 +220,7 @@ class SubmitButton(discord.ui.Button['PictureView']):
 
         args = [f'{self.rt_ct}update', str(self.tier), str(self.num_races)]
         message = InteractionUtils.create_proxy_msg(interaction, args)
-
+        Stats.log_command(args[0])
         self.in_use = True
         # self.view.children.remove(self)
         # await common.safe_edit(self.view.message, view=self)
@@ -290,69 +296,68 @@ class PictureView(discord.ui.View):
 
 ###########################################################################################
 
-class SubmissionActionButton(discord.ui.Button['SubmissionView']):
-    def __init__(self, action):
-        self.action = action
-        style = discord.ButtonStyle.success if action == 'Approve' else discord.ButtonStyle.danger
-        super().__init__(style=style, label=self.action)
+# class SubmissionActionButton(discord.ui.Button['SubmissionView']):
+#     def __init__(self, action):
+#         self.action = action
+#         style = discord.ButtonStyle.success if action == 'Approve' else discord.ButtonStyle.danger
+#         super().__init__(style=style, label=self.action)
     
-    async def callback(self, interaction: discord.Interaction):
-        if self.view.responded: 
-            return
+#     async def callback(self, interaction: discord.Interaction):
+#         if self.view.responded: 
+#             return
         
-        self.responded = True
-        msg =InteractionUtils.create_proxy_msg(interaction)
+#         self.responded = True
+#         msg =InteractionUtils.create_proxy_msg(interaction)
 
-        await self.view.on_timeout()
-        if self.action == 'Approve':
-            await commands.LoungeCommands.approve_submission_command(self.view.bot, msg, [self.action], self.view.bot.lounge_submissions)
-        else:
-            await commands.LoungeCommands.deny_submission_command(self.view.bot, msg, [self.action, self.view.submission_id], self.view.bot.lounge_submissions)
+#         await self.view.on_timeout()
+#         if self.action == 'Approve':
+#             await commands.LoungeCommands.approve_submission_command(self.view.bot, msg, [self.action], self.view.bot.lounge_submissions)
+#         else:
+#             await commands.LoungeCommands.deny_submission_command(self.view.bot, msg, [self.action, self.view.submission_id], self.view.bot.lounge_submissions)
         
 
-class SubmissionView(discord.ui.View):
-    def __init__(self, channel_bot, submissionID):
-        super().__init__(timeout=600)
-        self.channel_bot = channel_bot
-        self.bot = common.client
-        self.submission_id = submissionID
-        self.message = None
-        self.responded = False
+# class SubmissionView(discord.ui.View):
+#     def __init__(self, channel_bot, submissionID):
+#         super().__init__(timeout=600)
+#         self.channel_bot = channel_bot
+#         self.bot = common.client
+#         self.submission_id = submissionID
+#         self.message = None
+#         self.responded = False
 
-        self.add_item(SubmissionActionButton('Approve'))
-        self.add_item(SubmissionActionButton('Deny'))
+#         self.add_item(SubmissionActionButton('Approve'))
+#         self.add_item(SubmissionActionButton('Deny'))
     
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        can_interact = interaction.channel.permissions_for(interaction.user).send_messages
-        has_authority = self.bot.lounge_submissions.report_table_authority_check(interaction.user)
-        if not can_interact or not has_authority:
-            await interaction.response.send_message("You don't have permission to use this.", ephemeral=True)
-            return False
+#     async def interaction_check(self, interaction: discord.Interaction) -> bool:
+#         can_interact = interaction.channel.permissions_for(interaction.user).send_messages
+#         has_authority = self.bot.lounge_submissions.report_table_authority_check(interaction.user)
+#         if not can_interact or not has_authority:
+#             await interaction.response.send_message("You don't have permission to use this.", ephemeral=True)
+#             return False
         
-        if self.responded:
-            return False
+#         if self.responded:
+#             return False
 
-        return True
+#         return True
     
-    async def on_timeout(self) -> None:
-        self.clear_items()
-        self.stop()
-        if self.message:
-            await common.safe_edit(self.message, view=None)
+#     async def on_timeout(self) -> None:
+#         self.clear_items()
+#         self.stop()
+#         if self.message:
+#             await common.safe_edit(self.message, view=None)
     
-    async def on_error(self, error: Exception, item: discord.ui.Item, interaction: discord.Interaction) -> None:
-        await InteractionUtils.on_component_error(error, interaction, self.prefix, self.bot)
+#     async def on_error(self, error: Exception, item: discord.ui.Item, interaction: discord.Interaction) -> None:
+#         await InteractionUtils.on_component_error(error, interaction, self.prefix, self.bot)
 
-    async def send(self, messageable, content=None, file=None, embed=None, target=None):
-        if hasattr(messageable, 'channel'):
-            messageable = messageable.channel
+#     async def send(self, messageable, content=None, file=None, embed=None, target=None):
+#         if hasattr(messageable, 'channel'):
+#             messageable = messageable.channel
         
-        if target:
-            messageable = target
+#         if target:
+#             messageable = target
 
-        self.message = await messageable.send(content=content, file=file, embed=embed, view=self)
-        return self.message
-
+#         self.message = await messageable.send(content=content, file=file, embed=embed, view=self)
+#         return self.message
 
 ###############################################################################################
 class RejectButton(discord.ui.Button['SuggestionView']):
