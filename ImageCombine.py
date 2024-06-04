@@ -226,20 +226,23 @@ def generate_footer_section_for_team(miis: Dict[str, Mii.Mii], team_tag="No Tag"
         if should_increase_mii_name_size:
             max_mii_name_height += 4
         mii_font = ImageFont.truetype(DEFAULT_MII_NAME_FONT, mii_font_size)
+        left, top, right, bottom = mii_font.getbbox(mii_name)
+        mii_name_width = right - left
+        mii_name_height = bottom - top
         for _ in range(MAX_FONT_ITERATIONS):
-            if mii_font.getsize(mii_name)[0] > (actual_mii_picture_width - MII_NAME_WIDTH_PADDING) and mii_font.getsize(mii_name)[1] <= max_mii_name_height:
+            if mii_name_width > (actual_mii_picture_width - MII_NAME_WIDTH_PADDING) and mii_name_height <= max_mii_name_height:
                 #should_increase_mii_name_size = True
                 pass
-            if mii_font.getsize(mii_name)[0] <= (actual_mii_picture_width - MII_NAME_WIDTH_PADDING) and mii_font.getsize(mii_name)[1] <= max_mii_name_height:
+            if mii_name_width <= (actual_mii_picture_width - MII_NAME_WIDTH_PADDING) and mii_name_height <= max_mii_name_height:
                 break
                  
             # iterate until the text size is just larger than the criteria
             mii_font_size -= 1
             mii_font = ImageFont.truetype(DEFAULT_MII_NAME_FONT, mii_font_size)
+            left, top, right, bottom = mii_font.getbbox(mii_name)
+            mii_name_width = right - left
+            mii_name_height = bottom - top
             
-        
-        mii_name_width = mii_font.getsize(mii_name)[0]
-        mii_name_height = mii_font.getsize(mii_name)[1]
         mii_name_padding_width = mii_name_end_location_x - mii_name_start_location_x - mii_name_width
         mii_name_padding_height = MAX_MII_NAME_HEIGHT_BOX - mii_name_height 
         mii_name_start_location_x += round(mii_name_padding_width / 2)
@@ -257,15 +260,20 @@ def generate_footer_section_for_team(miis: Dict[str, Mii.Mii], team_tag="No Tag"
     if should_increase_team_tag_size:
         _team_tag_max_height += 4
     team_tag_font = ImageFont.truetype(DEFAULT_TEAM_TAG_FONT, team_tag_font_size)
+    left, top, right, bottom = team_tag_font.getbbox(team_tag)
+    team_tag_width = right - left
+    team_tag_height = bottom - top
     for _ in range(MAX_FONT_ITERATIONS):
-        if team_tag_font.getsize(team_tag)[0] <= (section_width - TEAM_TAG_WIDTH_PADDING) and team_tag_font.getsize(team_tag)[1] <= _team_tag_max_height:
+        if team_tag_width <= (section_width - TEAM_TAG_WIDTH_PADDING) and team_tag_height <= _team_tag_max_height:
             break
         # iterate until the text size is just larger than the criteria
         team_tag_font_size -= 1
         team_tag_font = ImageFont.truetype(DEFAULT_TEAM_TAG_FONT, team_tag_font_size)
+        left, top, right, bottom = team_tag_font.getbbox(team_tag)
+        team_tag_width = right - left
+        team_tag_height = bottom - top
+        
     #Compute location of team name
-    team_tag_width = team_tag_font.getsize(team_tag)[0]
-    team_tag_height = team_tag_font.getsize(team_tag)[1]
     team_tag_padding_height = MAX_TEAM_TAG_HEIGHT_BOX - team_tag_height
     team_tag_start_location_x = (section_width - team_tag_width)//2
     team_tag_start_location_y = round(team_tag_padding_height / 2)

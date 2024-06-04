@@ -9,7 +9,8 @@ import common
 import Stats
 import time
 from typing import Dict, Union
-# import gc
+import gc
+# gc.set_debug(gc.DEBUG_UNCOLLECTABLE)
 
 class ManualTeamsModal(discord.ui.Modal):
     def __init__(self, bot, prefix, is_lounge, view: 'ManualTeamsView'):
@@ -59,13 +60,13 @@ class ManualTeamsView(discord.ui.View):
         self.clear_items()
         self.stop()
         await interaction.response.edit_message(view=None)
-        del self
+        # del self
     
     async def on_timeout(self):
         self.clear_items()
         self.stop()
         await self.message.edit(view=None)
-        del self
+        # del self
         
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         can_interact = interaction.channel.permissions_for(interaction.user).send_messages
@@ -139,7 +140,7 @@ class ConfirmView(discord.ui.View):
             self.stop()
             await common.safe_edit(self.message, view=None)
         
-        del self
+        # del self
         # print(gc.is_finalized(self))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -177,18 +178,21 @@ class ConfirmView(discord.ui.View):
 ###########################################################################################
 
 class PictureButton(discord.ui.Button['PictureView']):
-    def __init__(self, bot):
-        cooldown = bot.getWPCooldownSeconds()
+    def __init__(self, bot, cooldown):
         super().__init__(style=discord.ButtonStyle.gray if (cooldown > 0) else discord.ButtonStyle.primary, label='Update', row=0)
         self.bot = bot
+        self.cooldown = cooldown
         self.responded = False
-        if cooldown > 0:
-            asyncio.create_task(self.activate())
+        # if cooldown > 0:
+        #     asyncio.create_task(self.activate())
+        #     print(self.view)
 
     async def activate(self):
         await asyncio.sleep(self.bot.getWPCooldownSeconds())
+        # await asyncio.sleep(self.cooldown)
         self.style = discord.ButtonStyle.primary
         try:
+            # print(self.view)
             if self.view.message.channel.id in TableBot.last_wp_button:
                 await common.safe_edit(self.view.message, view=self.view)
         except:
@@ -203,7 +207,8 @@ class PictureButton(discord.ui.Button['PictureView']):
         msg = InteractionUtils.create_proxy_msg(interaction, ['wp'])
         Stats.log_command('wp', msg.author.id)
 
-        await common.safe_edit(interaction.message, view=None)
+        await self.view.on_timeout()
+        # await common.safe_edit(interaction.message, view=None)
         await commands.TablingCommands.war_picture_command(msg,self.view.bot,['wp'],self.view.prefix,self.view.is_lounge,
                                                            requester=interaction.user.display_name)
 
@@ -256,8 +261,11 @@ class PictureView(discord.ui.View):
         self.prefix = prefix
         self.is_lounge = is_lounge_server
         self.message: discord.Message = None
-
-        self.add_item(PictureButton(self.bot))
+        pic_cooldown = bot.getWPCooldownSeconds()
+        pic_button = PictureButton(self.bot, pic_cooldown)
+        self.add_item(pic_button)
+        if pic_cooldown > 0:
+            asyncio.create_task(pic_button.activate())
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         can_interact = interaction.channel.permissions_for(interaction.user).send_messages
@@ -270,6 +278,13 @@ class PictureView(discord.ui.View):
             await interaction.response.send_message("You cannot use this button.", ephemeral=True)
             return False
         
+        cooldown = self.bot.getWPCooldownSeconds()
+        cooldown_active = cooldown > 0
+        if cooldown_active:
+            await interaction.response.send_message(f"This button is on cooldown. Please wait {cooldown} more seconds.", 
+                                                        ephemeral=True, delete_after=3.0)
+            return False
+
         if len(self.children) == 0:
             await self.on_timeout()
             return False
@@ -281,13 +296,6 @@ class PictureView(discord.ui.View):
 
             return True
 
-        cooldown = self.bot.getWPCooldownSeconds()
-        cooldown_active = cooldown > 0
-        if cooldown_active:
-            await interaction.response.send_message(f"This button is on cooldown. Please wait {cooldown} more seconds.", 
-                                                        ephemeral=True, delete_after=3.0)
-            return False
-
         return True
     
     async def on_timeout(self) -> None:
@@ -298,8 +306,8 @@ class PictureView(discord.ui.View):
         if self.message:
             await common.safe_edit(self.message, view=None)
         
-        del self
-        # print(gc.is_finalized(self))
+        # # del self
+        # print(gc.get_referrers(self))
     
     async def on_error(self, error: Exception, item: discord.ui.Item, interaction: discord.Interaction) -> None:
         await InteractionUtils.on_component_error(error, interaction, self.prefix, self.bot)
@@ -390,7 +398,7 @@ class VRView(discord.ui.View):
         if self.message_ref:
             await common.safe_edit(self.message_ref, view=None)
         
-        del self
+        # del self
         # print(gc.is_finalized(self))
     
     async def on_error(self, error: Exception, item: discord.ui.Item, interaction: discord.Interaction) -> None:
@@ -522,18 +530,20 @@ class SuggestionView(discord.ui.View):
         self.create_suggestion()
 
     async def on_timeout(self) -> None:
-        try:
-            await self.message.delete()
-        except:
-            pass
+        # try:
+        #     await self.message.delete()
+        # except:
+        #     pass
         self.stop()
         self.clear_items()
         try:
             self.bot.getRoom().stop_watching_suggestions()
         except AttributeError: # room has already been destroyed/cleaned up
             pass
+        if self.message:
+            await common.safe_delete(self.message)
 
-        del self
+        # del self
         # print(gc.is_finalized(self))
 
     async def refresh_suggestions(self):
@@ -738,13 +748,13 @@ class TagEditView(discord.ui.View):
         self.clear_items()
         self.stop()
         await interaction.response.edit_message(view=None)
-        del self
+        # del self
     
     async def on_timeout(self):
         self.clear_items()
         self.stop()
         await self.message.edit(view=None)
-        del self
+        # del self
         
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         can_interact = interaction.channel.permissions_for(interaction.user).send_messages
